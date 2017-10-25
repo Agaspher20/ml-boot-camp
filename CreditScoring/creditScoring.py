@@ -13,6 +13,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.cross_validation import cross_val_score
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.grid_search import GridSearchCV
+from sklearn.preprocessing import StandardScaler
 
 sys.path.append("ml-boot-camp\\CreditScoring")
 import helperFunctions as hlp
@@ -38,46 +39,36 @@ def read_and_prepare_data(path):
     frame[13] = hlp.fill_series_na(frame[13])
     return frame
 
-def transform_to_bool_columns(frame, column_index, column_values, init_false_value=-1., init_true_value=1.):
+def transform_to_bool_columns(frame, column_index, column_values):
     """ Преобразует категориальную колонку в несколько колонок, принимающих бинарные значения. """
     indices = list(frame.columns)
     next_index = indices[len(indices)-1] + 1
-    true_value = init_true_value
-    false_value = init_false_value
+    true_value = 1
+    false_value = 0
     for col_value in column_values:
         frame[next_index] = false_value
         frame.loc[frame[column_index] == col_value, next_index] = true_value
         next_index += 1
-        true_value += 1
-        false_value -= 1
 
-    return (frame.drop([column_index], axis=1), true_value, false_value)
+    return frame.drop([column_index], axis=1)
 
 def transform_columns_to_bool(train_frame, test_frame, indices):
     """ Преобразует список категориальных колонок в колонке, принимающие бинарные значения."""
-    false_val = -1
-    true_val = 1
     train_frame_res = train_frame.copy()
     test_frame_res = test_frame.copy()
     for col_index in indices:
         col_values = list(train_frame_res[col_index]) + list(test_frame_res[col_index])
         col_values = set(col_values)
         col_values.pop()
-        train_frame_res, next_true_val_train, next_false_val_train = transform_to_bool_columns(
+        train_frame_res = transform_to_bool_columns(
             train_frame_res,
             col_index,
-            col_values,
-            init_false_value=false_val,
-            init_true_value=true_val)
+            col_values)
             
-        test_frame_res, next_true_val_test, next_false_val_test = transform_to_bool_columns(
+        test_frame_res = transform_to_bool_columns(
             test_frame_res,
             col_index,
-            col_values,
-            init_false_value=false_val,
-            init_true_value=true_val)
-        false_val = next_false_val_train if next_false_val_train < next_false_val_test else next_false_val_test
-        true_val = next_true_val_train if next_true_val_train > next_true_val_test else next_true_val_test
+            col_values)
     return (train_frame_res, test_frame_res)
 
 def transform_categorial_columns_enc(train_frame, test_frame, columns):
@@ -116,6 +107,24 @@ def solve_task(model_name, model_factory, x_train_frame, y_train_frame, x_test_f
     result = model.predict(X_test)
     print(result)
     write_answer(model_name, result)
+
+def scale_columns(train_frame, test_frame, columns):
+    train_frame_c = train_frame[columns].as_matrix()
+    test_frame_c = test_frame[columns].as_matrix()
+
+    scaler = StandardScaler()
+    scaler.fit(train_frame_c)
+    train_frame_s = scaler.transform(train_frame_c)
+    test_frame_s = scaler.transform(test_frame_c)
+
+    rest_columns = list(set(train_frame.columns.values.tolist()) - set(columns))
+    train_frame_r = train_frame[rest_columns].as_matrix()
+    test_frame_r = test_frame[rest_columns].as_matrix()
+
+    train_result = np.hstack((train_frame_s,train_frame_r))
+    test_result = np.hstack((test_frame_s,test_frame_r))
+
+    return (pd.DataFrame(train_result), pd.DataFrame(test_result))
 #%%
 # Загрузим тренировочные данные
 train_x = read_and_prepare_data("ml-boot-camp\\Data\\crx_data_train_x.csv")
@@ -196,3 +205,20 @@ solve_task(
     train_x_base,
     train_y,
     test_x_base)
+
+#%%
+numeric_columns = list(set(train_x.columns.values.tolist()) - set(categorial_columns))
+train_x_scaled,test_x_scaled = scale_columns(
+    train_x_base,
+    test_x_base,
+    numeric_columns)
+
+#%%
+solve_task(
+    "baseLineScaled",
+    LogisticRegression,
+    train_x_scaled,
+    train_y,
+    test_x_scaled)
+#%%
+train_x_scaled.iloc[0]
