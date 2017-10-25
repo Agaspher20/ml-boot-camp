@@ -11,6 +11,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import BaggingClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.cross_validation import cross_val_score
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.grid_search import GridSearchCV
 
 sys.path.append("ml-boot-camp\\CreditScoring")
 import helperFunctions as hlp
@@ -77,6 +79,24 @@ def transform_columns_to_bool(train_frame, test_frame, indices):
         false_val = next_false_val_train if next_false_val_train < next_false_val_test else next_false_val_test
         true_val = next_true_val_train if next_true_val_train > next_true_val_test else next_true_val_test
     return (train_frame_res, test_frame_res)
+
+def transform_categorial_columns_enc(train_frame, test_frame, columns):
+    train_frame_cat = train_frame[columns]
+    test_frame_cat = test_frame[columns]
+
+    encoder = DictVectorizer(sparse = False)
+
+    train_cat_oh = encoder.fit_transform(train_frame_cat.T.to_dict().values())
+    test_cat_oh = encoder.fit_transform(test_frame_cat.T.to_dict().values())
+
+    numeric_columns = list(set(train_frame.columns.values.tolist()) - set(columns))
+    train_frame_num = train_frame[numeric_columns]
+    test_frame_num = test_frame[numeric_columns]
+
+    train_res = np.hstack((train_frame_num,train_cat_oh))
+    test_res = np.hstack((test_frame_num,test_cat_oh))
+
+    return (train_res, test_res)
 
 def write_answer(fileName, answer):
     """ Writes result into answer file """
@@ -159,6 +179,20 @@ def decision_forest_factory():
 solve_task(
     "decisionForest",
     decision_forest_factory,
+    train_x_base,
+    train_y,
+    test_x_base)
+#%%
+def grid_search_logistic_factory(x, y):
+    optimizer = LogisticRegression("l2")
+    param_grid = {"C": [0.01, 0.05, 0.1, 0.5, 1, 5, 10]}
+    estimator = GridSearchCV(optimizer, param_grid, cv=3)
+    estimator.fit(x, y)
+    return estimator.best_estimator_
+
+solve_task(
+    "gridSearchLogisticRegression",
+    lambda: grid_search_logistic_factory(train_x_base.as_matrix(), train_y.as_matrix().flatten()),
     train_x_base,
     train_y,
     test_x_base)
