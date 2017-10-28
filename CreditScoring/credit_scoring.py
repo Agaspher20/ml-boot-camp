@@ -11,6 +11,7 @@ from sklearn.ensemble import BaggingClassifier
 from sklearn.cross_validation import cross_val_score
 from sklearn.grid_search import GridSearchCV
 from sklearn.preprocessing import StandardScaler
+from matplotlib import pyplot as plt
 
 sys.path.append("ml-boot-camp\\CreditScoring")
 import helperFunctions as hlp
@@ -134,6 +135,51 @@ train_x_base, test_x_base = transform_columns_to_bool(train_x, test_x, categoria
 train_x_y = train_x.copy()
 train_x_y[15] = train_y[0]
 sns.pairplot(train_x_y)
+#%%
+def build_pairplot(
+        frame,
+        y_col,
+        frame_columns,
+        plot_columns_count=2):
+    """ Bulds pair plots for given columns """
+    frame_columns_count = len(frame_columns)
+    if frame_columns_count == 0:
+        return
+    plot_rows_count = int(frame_columns_count/plot_columns_count)
+
+    if plot_rows_count < frame_columns_count/plot_columns_count:
+        plot_rows_count = plot_rows_count + 1
+    if frame_columns_count < plot_columns_count:
+        plot_rows_count = 1
+        plot_columns_count = frame_columns_count
+    fig, axes = plt.subplots(
+        nrows=plot_rows_count,
+        ncols=plot_columns_count,
+        figsize=(10, 10))
+    for idx, feature in enumerate(frame_columns):
+        frame.plot(
+            feature,
+            y_col,
+            subplots=True,
+            kind="hist",
+            ax=axes[int(idx / plot_columns_count), int(idx % plot_columns_count)])
+#%%
+y_column = max(train_x_base.columns) + 1
+train_x_y = train_x_base.copy()
+train_x_y[y_column] = train_y[0]
+feature_columns = train_x_y.columns[:-1]
+start = 0
+step = 6
+end = step
+plot_columns = feature_columns[start:end]
+while len(plot_columns) > 0:
+    build_pairplot(
+        train_x_y,
+        y_column,
+        plot_columns)
+    start = end
+    end = end + step
+    plot_columns = feature_columns[start:end]
 # По pairplot можно сделать следующие выводы
 # 1. Не наблюдается коллинеарных признаков
 # 2. Есть признаки неплохо описывающие ответ
