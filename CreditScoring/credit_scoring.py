@@ -5,13 +5,10 @@ import sys
 import pandas as pd
 import numpy as np
 import seaborn as sns
-from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import BaggingClassifier
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.cross_validation import cross_val_score
-from sklearn.feature_extraction import DictVectorizer
 from sklearn.grid_search import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 
@@ -29,7 +26,7 @@ def read_and_prepare_data(path):
             14: "float64"
         },
         header=None)
-    
+
     # В колонке 1 (287 значений train, 161 значение test)
     # и 13 (145 значений train, 68 значений test) есть пропуски.
     # Пропуски обозначены символом "?".
@@ -64,51 +61,34 @@ def transform_columns_to_bool(train_frame, test_frame, indices):
             train_frame_res,
             col_index,
             col_values)
-            
         test_frame_res = transform_to_bool_columns(
             test_frame_res,
             col_index,
             col_values)
     return (train_frame_res, test_frame_res)
 
-def transform_categorial_columns_enc(train_frame, test_frame, columns):
-    train_frame_cat = train_frame[columns]
-    test_frame_cat = test_frame[columns]
-
-    encoder = DictVectorizer(sparse = False)
-
-    train_cat_oh = encoder.fit_transform(train_frame_cat.T.to_dict().values())
-    test_cat_oh = encoder.fit_transform(test_frame_cat.T.to_dict().values())
-
-    numeric_columns = list(set(train_frame.columns.values.tolist()) - set(columns))
-    train_frame_num = train_frame[numeric_columns]
-    test_frame_num = test_frame[numeric_columns]
-
-    train_res = np.hstack((train_frame_num,train_cat_oh))
-    test_res = np.hstack((test_frame_num,test_cat_oh))
-
-    return (train_res, test_res)
-
-def write_answer(fileName, answer):
+def write_answer(file_name, answer):
     """ Writes result into answer file """
-    with open("ml-boot-camp\\Results\\credit_scoring_" + fileName + ".csv", "w") as fout:
+    with open("ml-boot-camp\\Results\\credit_scoring_" + file_name + ".csv", "w") as fout:
         for val in answer:
             fout.write(str(val)+"\n")
 
 def solve_task(model_name, model_factory, x_train_frame, y_train_frame, x_test_frame):
-    X = x_train_frame.as_matrix()
-    y = y_train_frame.as_matrix().flatten()
+    """ Solves task with model, given via model_factory """
+    x_train = x_train_frame.as_matrix()
+    y_train = y_train_frame.as_matrix().flatten()
     scorer_model = model_factory()
-    scorer = cross_val_score(scorer_model, X, y, cv=3)
+    scorer = cross_val_score(scorer_model, x_train, y_train, cv=3)
     print(scorer.mean())
     model = model_factory()
-    X_test = x_test_frame.as_matrix()
-    model.fit(X, y)
-    result = model.predict(X_test)
+    x_test = x_test_frame.as_matrix()
+    model.fit(x_train, y_train)
+    result = model.predict(x_test)
     print(result)
     write_answer(model_name, result)
 
 def scale_columns(train_frame, test_frame, columns):
+    """ Scales columns """
     train_frame_c = train_frame[columns].as_matrix()
     test_frame_c = test_frame[columns].as_matrix()
 
@@ -121,8 +101,8 @@ def scale_columns(train_frame, test_frame, columns):
     train_frame_r = train_frame[rest_columns].as_matrix()
     test_frame_r = test_frame[rest_columns].as_matrix()
 
-    train_result = np.hstack((train_frame_s,train_frame_r))
-    test_result = np.hstack((test_frame_s,test_frame_r))
+    train_result = np.hstack((train_frame_s, train_frame_r))
+    test_result = np.hstack((test_frame_s, test_frame_r))
 
     return (pd.DataFrame(train_result), pd.DataFrame(test_result))
 #%%
@@ -130,7 +110,7 @@ def scale_columns(train_frame, test_frame, columns):
 train_x = read_and_prepare_data("ml-boot-camp\\Data\\crx_data_train_x.csv")
 train_x.head()
 #%%
-train_y = pd.read_csv("ml-boot-camp\\Data\\crx_data_train_y.csv",",",header=None)
+train_y = pd.read_csv("ml-boot-camp\\Data\\crx_data_train_y.csv", ",", header=None)
 train_y.shape
 #%%
 hlp.frame_report(train_x)
@@ -142,8 +122,8 @@ hlp.frame_report(test_x)
 #%%
 # Колонки с количеством значений 15 и меньше похожи на категориальные.
 # Выпишем категориальные индексы колонок
-categorial_columns = [0,3,4,5,6,8,9,11,12]
-train_x_base,test_x_base = transform_columns_to_bool(train_x, test_x, categorial_columns)
+categorial_columns = [0, 3, 4, 5, 6, 8, 9, 11, 12]
+train_x_base, test_x_base = transform_columns_to_bool(train_x, test_x, categorial_columns)
 # Поскольку одни и те же колонки являются категориальными и числовыми,
 # можно применить одни и те же трансформации, чтобы убрать пропуски в
 # данных
@@ -182,9 +162,9 @@ solve_task(
     test_x_base)
 #%%
 def decision_forest_factory():
-    treeClassifier = DecisionTreeClassifier()
+    tree_classifier = DecisionTreeClassifier()
     trees_count = 100
-    return BaggingClassifier(base_estimator=treeClassifier, n_estimators=trees_count)
+    return BaggingClassifier(base_estimator=tree_classifier, n_estimators=trees_count)
 solve_task(
     "decisionForest",
     decision_forest_factory,
@@ -192,11 +172,12 @@ solve_task(
     train_y,
     test_x_base)
 #%%
-def grid_search_logistic_factory(x, y):
+def grid_search_logistic_factory(x_train, y_train):
+    """ regularization strength grid search """
     optimizer = LogisticRegression("l2")
     param_grid = {"C": [0.01, 0.05, 0.1, 0.5, 1, 5, 10]}
     estimator = GridSearchCV(optimizer, param_grid, cv=3)
-    estimator.fit(x, y)
+    estimator.fit(x_train, y_train)
     return estimator.best_estimator_
 
 solve_task(
@@ -208,7 +189,7 @@ solve_task(
 
 #%%
 numeric_columns = list(set(train_x.columns.values.tolist()) - set(categorial_columns))
-train_x_scaled,test_x_scaled = scale_columns(
+train_x_scaled, test_x_scaled = scale_columns(
     train_x_base,
     test_x_base,
     numeric_columns)
@@ -220,8 +201,4 @@ solve_task(
     train_x_scaled,
     train_y,
     test_x_scaled)
-#%%
-train_x_scaled.iloc[0]
-
-# Все-таки использовать для преобразования категориальных признаков библиотечную функцию
 # Попробовать найти скореллированные колонки и удалить часть признаков
