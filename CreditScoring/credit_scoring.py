@@ -162,6 +162,7 @@ solve_task(
     test_x_base)
 #%%
 def decision_forest_factory():
+    """ Factory build decision forest based on BaggingClassifier """
     tree_classifier = DecisionTreeClassifier()
     trees_count = 100
     return BaggingClassifier(base_estimator=tree_classifier, n_estimators=trees_count)
