@@ -85,7 +85,6 @@ def solve_task(model_name, model_factory, x_train_frame, y_train_frame, x_test_f
     x_test = x_test_frame.as_matrix()
     model.fit(x_train, y_train)
     result = model.predict(x_test)
-    print(result)
     write_answer(model_name, result)
 
 def scale_columns(train_frame, test_frame, columns):
@@ -249,3 +248,28 @@ solve_task(
     train_y,
     test_x_scaled)
 # Попробовать найти скореллированные колонки и удалить часть признаков
+#%%
+feature_correlations = set([])
+correlations = train_x_scaled.corr()
+for col in correlations.columns:
+    for idx in correlations.index:
+        correlation = correlations[col][idx]
+        if (col != idx
+            and correlation > 0.3
+            and not feature_correlations.intersection([(col, idx, correlation)])
+            and not feature_correlations.intersection([(idx, col, correlation)])):
+            feature_correlations.add((col, idx, correlation))
+#%%
+for col, idx, corr in sorted(feature_correlations, key=lambda x: -x[2]):
+    print ("Correlation between features [%i;%i] is %f" % (col, idx, corr))
+#%%
+columns_to_remove = [13, 12, 31, 11, 29, 25, 34, 35, 30, 38]
+train_x_corr = train_x_scaled.drop(columns_to_remove, axis=1)
+test_x_corr = test_x_scaled.drop(columns_to_remove, axis=1)
+#%%
+solve_task(
+    "decisionForestCorr",
+    decision_forest_factory,
+    train_x_corr,
+    train_y,
+    test_x_corr)
