@@ -49,12 +49,9 @@ train_x = process.read_and_prepare_data(
     categorial_columns,
     lambda numerics: numerics.median(),
     lambda values: "nan")
-train_x.head()
 #%%
 train_y = pd.read_csv("ml-boot-camp\\Data\\crx_data_train_y.csv", ",", header=None)
 train_y.shape
-#%%
-hlp.frame_report(train_x)
 #%%
 test_x = process.read_and_prepare_data(
     "ml-boot-camp\\Data\\crx_data_test_x.csv",
@@ -62,9 +59,6 @@ test_x = process.read_and_prepare_data(
     categorial_columns,
     lambda numerics: numerics.median(),
     lambda values: "nan")
-test_x.head()
-#%%
-hlp.frame_report(test_x)
 #%%
 # Колонки с количеством значений 15 и меньше похожи на категориальные.
 # Выпишем категориальные индексы колонок
@@ -75,31 +69,6 @@ train_x_base, test_x_base = process.transform_columns_to_bool(train_x, test_x, c
 
 # На самом деле колонку с 22 значениями можно попробовать проинтерпретировать как категориальную и
 # посмотреть, что получится.
-#%%
-train_x_y = train_x.copy()
-train_x_y[15] = train_y[0]
-sns.pairplot(train_x_y)
-#%%
-y_column = max(train_x_base.columns) + 1
-train_x_y = train_x_base.copy()
-train_x_y[y_column] = train_y[0]
-feature_columns = train_x_y.columns[:-1]
-start = 0
-step = 6
-end = step
-plot_columns = feature_columns[start:end]
-while len(plot_columns) > 0:
-    hlp.build_pairplot(
-        train_x_y,
-        y_column,
-        plot_columns)
-    start = end
-    end = end + step
-    plot_columns = feature_columns[start:end]
-# По pairplot можно сделать следующие выводы
-# 1. Не наблюдается коллинеарных признаков
-# 2. Есть признаки неплохо описывающие ответ
-# 3. Классы в выборке распределены равномерно
 #%%
 # После препроцессинга попробуем обучить логистическую регрессию
 solve_task(
@@ -170,7 +139,7 @@ feature_correlations = hlp.pairwise_correlations(train_x_scaled, 0.3)
 for col, idx, corr in sorted(feature_correlations, key=lambda x: -x[2]):
     print ("Correlation between features [%i;%i] is %f" % (col, idx, corr))
 #%%
-columns_to_remove = [13, 36, 11]
+columns_to_remove = [35, 12, 13]
 train_x_corr = train_x_scaled.drop(columns_to_remove, axis=1)
 test_x_corr = test_x_scaled.drop(columns_to_remove, axis=1)
 #%%
