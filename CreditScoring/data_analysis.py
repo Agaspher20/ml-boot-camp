@@ -4,6 +4,7 @@ import random
 import pandas as pd
 import seaborn as sns
 import numpy as np
+from matplotlib import pyplot as plt
 
 sys.path.append("ml-boot-camp\\CreditScoring")
 import helperFunctions as hlp
@@ -33,9 +34,11 @@ test_x = process.read_and_prepare_data(
     lambda numerics: numerics.median(),
     lambda values: "nan")
 #%%
-test_x_numeric = test_x[numeric_columns]
-train_x_y = test_x_numeric.copy()
-train_x_y[15] = train_y[0]
+train_x_numeric = train_x[numeric_columns]
+train_x_y = train_x_numeric.copy()
+y_column = max(train_x_y.columns) + 1
+train_x_y[y_column] = train_y[0]
+#%%
 sns.pairplot(train_x_y)
 #%%
 y_column = max(train_x_base.columns) + 1
@@ -54,6 +57,24 @@ while len(plot_columns) > 0:
     start = end
     end = end + step
     plot_columns = feature_columns[start:end]
+#%%
+train_x_y[train_x_y[y_column] == 1][1]
+#%%
+for column1 in train_x_y.columns:
+    if column1 == y_column:
+        continue
+    for column2 in train_x_y.columns:
+        if column1 < column2:
+            print("features [%i;%i]" % (column1, column2))
+            plt.scatter(
+                    train_x_y[train_x_y[y_column] == 1][column1],
+                    train_x_y[train_x_y[y_column] == 1][column2],
+                    color="red")
+            plt.scatter(
+                    train_x_y[train_x_y[y_column] == 0][column1],
+                    train_x_y[train_x_y[y_column] == 0][column2],
+                    color="blue")
+            plt.show()
 # По pairplot можно сделать следующие выводы
 # 1. Не наблюдается коллинеарных признаков
 # 2. Есть признаки неплохо описывающие ответ
