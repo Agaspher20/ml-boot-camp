@@ -9,6 +9,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import BaggingClassifier
 from sklearn.cross_validation import cross_val_score
 from sklearn.grid_search import GridSearchCV
+from sklearn.ensemble import GradientBoostingClassifier
 
 sys.path.append("ml-boot-camp\\CreditScoring")
 import helperFunctions as hlp
@@ -147,7 +148,7 @@ feature_correlations = hlp.pairwise_correlations(train_x_scaled, 0.3)
 for col, idx, corr in sorted(feature_correlations, key=lambda x: -x[2]):
     print ("Correlation between features [%i;%i] is %f" % (col, idx, corr))
 #%%
-columns_to_remove = [33, 12, 13, 11]
+columns_to_remove = [11, 12, 13, 32]
 train_x_corr = train_x_scaled.drop(columns_to_remove, axis=1)
 test_x_corr = test_x_scaled.drop(columns_to_remove, axis=1)
 #%%
@@ -159,3 +160,37 @@ solve_task(
     train_x_corr,
     train_y,
     test_x_corr)
+#%%
+solve_task(
+    "gradient_boosting_corr",
+    GradientBoostingClassifier,
+    train_x_corr,
+    train_y,
+    test_x_corr)
+#%%
+def gradient_boosting_optimized():
+    optimizer = GradientBoostingClassifier()
+    param_grid = {
+        "loss": ["deviance", "exponential"],
+        "learning_rate": [0.1, 0.2, 0.3, 0.4, 0.5],
+        "n_estimators": [50, 75, 100],
+        "max_depth": [5, 6, 7, 8]
+    }
+    estimator = GridSearchCV(optimizer, param_grid, cv=3)
+    x_train = train_x_corr.as_matrix()
+    y_train = train_y.as_matrix().flatten()
+    estimator.fit(x_train, y_train)
+    return estimator.best_estimator_
+best_model = solve_task(
+    "gradient_boosting_optimized_corr",
+    gradient_boosting_optimized,
+    train_x_corr,
+    train_y,
+    test_x_corr)
+#%%
+result = best_model.predict(test_x_corr.as_matrix())
+hlp.write_answer(
+    "gradient_boosting_optimized_corr",
+    result)
+#%%
+best_model.max_depth
