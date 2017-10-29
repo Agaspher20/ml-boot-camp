@@ -3,77 +3,17 @@
 # Загрузим библиотеки
 import sys
 import pandas as pd
-import numpy as np
 import seaborn as sns
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import BaggingClassifier
 from sklearn.cross_validation import cross_val_score
 from sklearn.grid_search import GridSearchCV
-from sklearn.preprocessing import StandardScaler
-from matplotlib import pyplot as plt
 
 sys.path.append("ml-boot-camp\\CreditScoring")
 import helperFunctions as hlp
+import process_data_functions as process
 #%%
-def read_and_prepare_data(path):
-    """ Функция читает данные в frame и удаляет пропуски """
-    # Загрузим данные
-    frame = pd.read_csv(
-        path,
-        ",",
-        dtype={
-            10: "float64",
-            14: "float64"
-        },
-        header=None)
-
-    # В колонке 1 (287 значений train, 161 значение test)
-    # и 13 (145 значений train, 68 значений test) есть пропуски.
-    # Пропуски обозначены символом "?".
-    # # Из-за пропусков значения читаются как строки.
-    # # Преобразуем значения в числа и заполним пропуски средними.
-    frame[1] = hlp.fill_series_na(frame[1])
-    frame[13] = hlp.fill_series_na(frame[13])
-    return frame
-
-def transform_to_bool_columns(frame, column_index, column_values):
-    """ Преобразует категориальную колонку в несколько колонок, принимающих бинарные значения. """
-    indices = list(frame.columns)
-    next_index = indices[len(indices)-1] + 1
-    true_value = 1
-    false_value = 0
-    for col_value in column_values:
-        frame[next_index] = false_value
-        frame.loc[frame[column_index] == col_value, next_index] = true_value
-        next_index += 1
-
-    return frame.drop([column_index], axis=1)
-
-def transform_columns_to_bool(train_frame, test_frame, indices):
-    """ Преобразует список категориальных колонок в колонке, принимающие бинарные значения."""
-    train_frame_res = train_frame.copy()
-    test_frame_res = test_frame.copy()
-    for col_index in indices:
-        col_values = list(train_frame_res[col_index]) + list(test_frame_res[col_index])
-        col_values = set(col_values)
-        col_values.pop()
-        train_frame_res = transform_to_bool_columns(
-            train_frame_res,
-            col_index,
-            col_values)
-        test_frame_res = transform_to_bool_columns(
-            test_frame_res,
-            col_index,
-            col_values)
-    return (train_frame_res, test_frame_res)
-
-def write_answer(file_name, answer):
-    """ Writes result into answer file """
-    with open("ml-boot-camp\\Results\\credit_scoring_" + file_name + ".csv", "w") as fout:
-        for val in answer:
-            fout.write(str(val)+"\n")
-
 def solve_task(model_name, model_factory, x_train_frame, y_train_frame, x_test_frame):
     """ Solves task with model, given via model_factory """
     x_train = x_train_frame.as_matrix()
@@ -85,29 +25,11 @@ def solve_task(model_name, model_factory, x_train_frame, y_train_frame, x_test_f
     x_test = x_test_frame.as_matrix()
     model.fit(x_train, y_train)
     result = model.predict(x_test)
-    write_answer(model_name, result)
-
-def scale_columns(train_frame, test_frame, columns):
-    """ Scales columns """
-    train_frame_c = train_frame[columns].as_matrix()
-    test_frame_c = test_frame[columns].as_matrix()
-
-    scaler = StandardScaler()
-    scaler.fit(train_frame_c)
-    train_frame_s = scaler.transform(train_frame_c)
-    test_frame_s = scaler.transform(test_frame_c)
-
-    rest_columns = list(set(train_frame.columns.values.tolist()) - set(columns))
-    train_frame_r = train_frame[rest_columns].as_matrix()
-    test_frame_r = test_frame[rest_columns].as_matrix()
-
-    train_result = np.hstack((train_frame_s, train_frame_r))
-    test_result = np.hstack((test_frame_s, test_frame_r))
-
-    return (pd.DataFrame(train_result), pd.DataFrame(test_result))
+    hlp.write_answer(model_name, result)
+    return model
 #%%
 # Загрузим тренировочные данные
-train_x = read_and_prepare_data("ml-boot-camp\\Data\\crx_data_train_x.csv")
+train_x = process.read_and_prepare_data("ml-boot-camp\\Data\\crx_data_train_x.csv")
 train_x.head()
 #%%
 train_y = pd.read_csv("ml-boot-camp\\Data\\crx_data_train_y.csv", ",", header=None)
@@ -115,7 +37,7 @@ train_y.shape
 #%%
 hlp.frame_report(train_x)
 #%%
-test_x = read_and_prepare_data("ml-boot-camp\\Data\\crx_data_test_x.csv")
+test_x = process.read_and_prepare_data("ml-boot-camp\\Data\\crx_data_test_x.csv")
 test_x.head()
 #%%
 hlp.frame_report(test_x)
@@ -123,7 +45,7 @@ hlp.frame_report(test_x)
 # Колонки с количеством значений 15 и меньше похожи на категориальные.
 # Выпишем категориальные индексы колонок
 categorial_columns = [0, 3, 4, 5, 6, 8, 9, 11, 12]
-train_x_base, test_x_base = transform_columns_to_bool(train_x, test_x, categorial_columns)
+train_x_base, test_x_base = process.transform_columns_to_bool(train_x, test_x, categorial_columns)
 # Поскольку одни и те же колонки являются категориальными и числовыми,
 # можно применить одни и те же трансформации, чтобы убрать пропуски в
 # данных
@@ -135,34 +57,6 @@ train_x_y = train_x.copy()
 train_x_y[15] = train_y[0]
 sns.pairplot(train_x_y)
 #%%
-def build_pairplot(
-        frame,
-        y_col,
-        frame_columns,
-        plot_columns_count=2):
-    """ Bulds pair plots for given columns """
-    frame_columns_count = len(frame_columns)
-    if frame_columns_count == 0:
-        return
-    plot_rows_count = int(frame_columns_count/plot_columns_count)
-
-    if plot_rows_count < frame_columns_count/plot_columns_count:
-        plot_rows_count = plot_rows_count + 1
-    if frame_columns_count < plot_columns_count:
-        plot_rows_count = 1
-        plot_columns_count = frame_columns_count
-    fig, axes = plt.subplots(
-        nrows=plot_rows_count,
-        ncols=plot_columns_count,
-        figsize=(10, 10))
-    for idx, feature in enumerate(frame_columns):
-        frame.plot(
-            feature,
-            y_col,
-            subplots=True,
-            kind="hist",
-            ax=axes[int(idx / plot_columns_count), int(idx % plot_columns_count)])
-#%%
 y_column = max(train_x_base.columns) + 1
 train_x_y = train_x_base.copy()
 train_x_y[y_column] = train_y[0]
@@ -172,7 +66,7 @@ step = 6
 end = step
 plot_columns = feature_columns[start:end]
 while len(plot_columns) > 0:
-    build_pairplot(
+    hlp.build_pairplot(
         train_x_y,
         y_column,
         plot_columns)
@@ -235,40 +129,32 @@ solve_task(
 
 #%%
 numeric_columns = list(set(train_x.columns.values.tolist()) - set(categorial_columns))
-train_x_scaled, test_x_scaled = scale_columns(
+train_x_scaled, test_x_scaled = process.scale_columns(
     train_x_base,
     test_x_base,
     numeric_columns)
-
 #%%
 solve_task(
-    "baseLineScaled",
-    LogisticRegression,
+    "decisionForest_scaled",
+    decision_forest_factory,
     train_x_scaled,
     train_y,
     test_x_scaled)
 # Попробовать найти скореллированные колонки и удалить часть признаков
 #%%
-feature_correlations = set([])
-correlations = train_x_scaled.corr()
-for col in correlations.columns:
-    for idx in correlations.index:
-        correlation = correlations[col][idx]
-        if (col != idx
-            and correlation > 0.3
-            and not feature_correlations.intersection([(col, idx, correlation)])
-            and not feature_correlations.intersection([(idx, col, correlation)])):
-            feature_correlations.add((col, idx, correlation))
+feature_correlations = hlp.pairwise_correlations(train_x_scaled, 0.3)
 #%%
 for col, idx, corr in sorted(feature_correlations, key=lambda x: -x[2]):
     print ("Correlation between features [%i;%i] is %f" % (col, idx, corr))
 #%%
-columns_to_remove = [13, 12, 31, 11, 29, 25, 34, 35, 30, 38]
+columns_to_remove = [33, 12, 13, 11]
 train_x_corr = train_x_scaled.drop(columns_to_remove, axis=1)
 test_x_corr = test_x_scaled.drop(columns_to_remove, axis=1)
 #%%
+feature_correlations = hlp.pairwise_correlations(train_x_corr, 0.3)
+#%%
 solve_task(
-    "decisionForestCorr",
+    "decisionForest_corr",
     decision_forest_factory,
     train_x_corr,
     train_y,
