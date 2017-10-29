@@ -29,8 +29,15 @@ def solve_task(model_name, model_factory, x_train_frame, y_train_frame, x_test_f
     hlp.write_answer(model_name, result)
     return model
 #%%
+categorial_columns = [0, 3, 4, 5, 6, 8, 9, 11, 12]
+numeric_columns = [1, 2, 7, 10, 13, 14]
 # Загрузим тренировочные данные
-train_x = process.read_and_prepare_data("ml-boot-camp\\Data\\crx_data_train_x.csv")
+train_x = process.read_and_prepare_data(
+    "ml-boot-camp\\Data\\crx_data_train_x.csv",
+    numeric_columns,
+    categorial_columns,
+    lambda numerics: numerics.mean(),
+    lambda values: "nan")
 train_x.head()
 #%%
 train_y = pd.read_csv("ml-boot-camp\\Data\\crx_data_train_y.csv", ",", header=None)
@@ -38,7 +45,12 @@ train_y.shape
 #%%
 hlp.frame_report(train_x)
 #%%
-test_x = process.read_and_prepare_data("ml-boot-camp\\Data\\crx_data_test_x.csv")
+test_x = process.read_and_prepare_data(
+    "ml-boot-camp\\Data\\crx_data_test_x.csv",
+    numeric_columns,
+    categorial_columns,
+    lambda numerics: numerics.mean(),
+    lambda values: "nan")
 test_x.head()
 #%%
 hlp.frame_report(test_x)
@@ -148,7 +160,7 @@ feature_correlations = hlp.pairwise_correlations(train_x_scaled, 0.3)
 for col, idx, corr in sorted(feature_correlations, key=lambda x: -x[2]):
     print ("Correlation between features [%i;%i] is %f" % (col, idx, corr))
 #%%
-columns_to_remove = [11, 12, 13, 32]
+columns_to_remove = [11, 12, 13, 29]
 train_x_corr = train_x_scaled.drop(columns_to_remove, axis=1)
 test_x_corr = test_x_scaled.drop(columns_to_remove, axis=1)
 #%%

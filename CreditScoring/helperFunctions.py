@@ -5,10 +5,10 @@ import numpy as np
 import numbers
 from matplotlib import pyplot as plt
 
-def fill_series_na(series):
+def fill_series_na(series, strategy):
     """ Функция принимает на вход Pandas series преобразует значения в numeric и заполняет nan средними """
     numerics = pd.to_numeric(series, errors="coerce")
-    return numerics.fillna(numerics.mean())
+    return numerics.fillna(strategy())
 
 def print_array_by_rows(array, row_len=10):
     """ Функция выводит массив по строкам. Длина строки может быть задана в параметре """
@@ -30,7 +30,7 @@ def list_contains_nulls(list):
             break
     return contains
 
-def frame_report(frame):
+def frame_report(frame, hide_values=False):
     """ Функция выводит отчет по каждой колонке в pandas dataframe """
 
     print ("Количество колонок: %i" % len(frame.columns.values))
@@ -48,8 +48,9 @@ def frame_report(frame):
             print ("\tПропусков нет")
                 
         print ("\tТип значений: ", type(all_column_values[0]))
-        print ("\tЗначения в колонке:")
-        print_array_by_rows(column_values)
+        if not hide_values:
+            print ("\tЗначения в колонке:")
+            print_array_by_rows(column_values)
 
 def build_pairplot(
         frame,

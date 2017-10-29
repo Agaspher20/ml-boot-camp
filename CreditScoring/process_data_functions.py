@@ -8,7 +8,12 @@ from sklearn.preprocessing import StandardScaler
 sys.path.append("ml-boot-camp\\CreditScoring")
 import helperFunctions as hlp
 
-def read_and_prepare_data(path):
+def read_and_prepare_data(
+    path,
+    numeric_columns,
+    categorial_columns,
+    na_numeric_strategy,
+    na_categorial_strategy):
     """ Функция читает данные в frame и удаляет пропуски """
     # Загрузим данные
     frame = pd.read_csv(
@@ -18,6 +23,7 @@ def read_and_prepare_data(path):
             10: "float64",
             14: "float64"
         },
+        na_values="?",
         header=None)
 
     # В колонке 1 (287 значений train, 161 значение test)
@@ -25,8 +31,10 @@ def read_and_prepare_data(path):
     # Пропуски обозначены символом "?".
     # # Из-за пропусков значения читаются как строки.
     # # Преобразуем значения в числа и заполним пропуски средними.
-    frame[1] = hlp.fill_series_na(frame[1])
-    frame[13] = hlp.fill_series_na(frame[13])
+    for col in numeric_columns:
+        frame[col] = frame[col].fillna(na_numeric_strategy(frame[col]))
+    for col in categorial_columns:
+        frame[col] = frame[col].fillna(na_categorial_strategy(frame[col]))
     return frame
 
 def transform_to_bool_columns(frame, column_index, column_values):
